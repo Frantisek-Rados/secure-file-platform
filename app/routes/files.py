@@ -1,9 +1,12 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File as FastAPIFile, Depends, HTTPException
 from pathlib import Path
 import shutil
 import uuid
 from datetime import datetime
+import os
 
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 from app.models.file import File as FileModel
 from app.core.database import SessionLocal
 from app.core.security import get_current_user
@@ -19,7 +22,7 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 
 @router.post("/upload")
 async def upload_file(
-    file: UploadFile = File(...),
+    file: UploadFile = FastAPIFile(...),
     current_user: str = Depends(get_current_user)
 ):
 
@@ -143,3 +146,36 @@ def download_file(
         filename=file.original_name,
         media_type="application/octet-stream"
     )
+
+@router.delete("/delete/{file_id}")
+def delete_file(
+    file_id: int,
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    file = db.query(FileModel).filter(FileModel.id == file_id).first()
+
+    if not file:
+        raise HTTPException(
+            status_code=404,
+            detail="File not found"
+        )
+
+    if file.owner_email != current_user:
+        raise HTTPException(
+            status_code=403,
+            detail="Not allowed"
+        )
+
+    file_path = f"uploads/{file.stored_name}"
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    db.delete(file)
+    db.commit()
+
+    return {
+        "message": "File deleted successfully"
+    }
