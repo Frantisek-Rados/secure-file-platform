@@ -1,0 +1,14 @@
+services:
+  api:
+    build: .
+
+    container_name: secure-file-api
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - ./uploads:/app/uploads
+      - ./app.db:/app/app.db
+
+    restart: always
