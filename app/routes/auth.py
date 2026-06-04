@@ -1,8 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi.security import (
+    OAuth2PasswordRequestForm
+)
+
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.user import User
+
 from app.core.security import (
     hash_password,
     verify_password,
@@ -11,15 +17,18 @@ from app.core.security import (
 
 router = APIRouter()
 
+
 @router.post("/register")
 def register(
     email: str,
     password: str,
     db: Session = Depends(get_db)
 ):
-    existing_user = db.query(User).filter(
-        User.email == email
-    ).first()
+    existing_user = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
 
     if existing_user:
         raise HTTPException(
@@ -36,17 +45,21 @@ def register(
     db.commit()
     db.refresh(user)
 
-    return {"message": "User created"}
+    return {
+        "message": "User created"
+    }
+
 
 @router.post("/login")
 def login(
-    email: str,
-    password: str,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(
-        User.email == email
-    ).first()
+    user = (
+        db.query(User)
+        .filter(User.email == form_data.username)
+        .first()
+    )
 
     if not user:
         raise HTTPException(
@@ -55,7 +68,7 @@ def login(
         )
 
     if not verify_password(
-        password,
+        form_data.password,
         user.hashed_password
     ):
         raise HTTPException(
@@ -63,8 +76,13 @@ def login(
             detail="Invalid credentials"
         )
 
-    token = create_access_token(
-        {"sub": user.email}
+    access_token = create_access_token(
+        {
+            "sub": user.email
+        }
     )
 
-    return {"access_token": token}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }

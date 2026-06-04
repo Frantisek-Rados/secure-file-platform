@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.file import FileRecord
+from app.core.dependencies import get_current_user
+from app.models.user import User
 
 import uuid
 import shutil
@@ -27,6 +29,7 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     unique_name = f"{uuid.uuid4()}_{file.filename}"
@@ -39,7 +42,7 @@ async def upload_file(
     new_file = FileRecord(
         filename=file.filename,
         filepath=str(file_path),
-        owner_id=2
+        owner_id=current_user.id
     )
 
     db.add(new_file)
