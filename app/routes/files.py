@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 import uuid
 import shutil
+import os
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -20,13 +21,15 @@ from app.core.dependencies import get_current_user
 from app.models.file import FileRecord
 from app.models.user import User
 
+from app.schemas.file import FileOut
+
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 router = APIRouter()
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=FileOut)
 async def upload_file(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -48,27 +51,22 @@ async def upload_file(
     db.commit()
     db.refresh(new_file)
 
-    return {
-        "id": new_file.id,
-        "filename": new_file.filename
-    }
+    return new_file
 
 
-@router.get("/files")
+@router.get("/files", response_model=list[FileOut])
 def get_files(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    files = (
+    return (
         db.query(FileRecord)
         .filter(FileRecord.owner_id == current_user.id)
         .all()
     )
 
-    return files
 
-
-@router.get("/files/{file_id}")
+@router.get("/files/{file_id}", response_model=FileOut)
 def get_file(
     file_id: int,
     db: Session = Depends(get_db),
@@ -84,10 +82,7 @@ def get_file(
     )
 
     if not file:
-        raise HTTPException(
-            status_code=404,
-            detail="File not found"
-        )
+        raise HTTPException(status_code=404, detail="File not found")
 
     return file
 
@@ -108,19 +103,40 @@ def download_file(
     )
 
     if not file:
-        raise HTTPException(
-            status_code=404,
-            detail="File not found"
-        )
+        raise HTTPException(status_code=404, detail="File not found")
 
     if not Path(file.filepath).exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Physical file not found"
-        )
+        raise HTTPException(status_code=404, detail="Physical file not found")
 
     return FileResponse(
         path=file.filepath,
         filename=file.filename,
         media_type="application/octet-stream"
     )
+
+
+@router.delete("/files/{file_id}")
+def delete_file(
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    file = (
+        db.query(FileRecord)
+        .filter(
+            FileRecord.id == file_id,
+            FileRecord.owner_id == current_user.id
+        )
+        .first()
+    )
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file.filepath and os.path.exists(file.filepath):
+        os.remove(file.filepath)
+
+    db.delete(file)
+    db.commit()
+
+    return {"message": "File deleted successfully"}
