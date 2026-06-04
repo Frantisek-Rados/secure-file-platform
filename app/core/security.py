@@ -32,3 +32,11 @@ def verify_token(token: str):
         return payload
     except JWTError:
         return None
+    
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({"exp": expire})
+
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
