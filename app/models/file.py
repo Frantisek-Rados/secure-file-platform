@@ -1,23 +1,17 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from datetime import datetime
+
 from app.core.database import Base
 
-
-class File(Column):
-    pass
-
-
-class File(Base):
+class FileRecord(Base):
     __tablename__ = "files"
 
     id = Column(Integer, primary_key=True, index=True)
 
-    original_name = Column(String)
-    stored_name = Column(String)
+    filename = Column(String)
 
-    size = Column(Integer)
+    filepath = Column(String)
 
-    owner_email = Column(String)
+    owner_id = Column(Integer, ForeignKey("users.id"))
 
-    sha256 = Column(String, unique=True)
-
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)

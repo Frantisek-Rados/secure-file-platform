@@ -1,14 +1,33 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: secure-file-db
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: securefiles
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   api:
     build: .
-
     container_name: secure-file-api
+    restart: always
 
     ports:
       - "8000:8000"
 
-    volumes:
-      - ./uploads:/app/uploads
-      - ./app.db:/app/app.db
+    depends_on:
+      - postgres
 
-    restart: always
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/securefiles
+
+volumes:
+  postgres_data:

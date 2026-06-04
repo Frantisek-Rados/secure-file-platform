@@ -1,7 +1,22 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from fastapi import Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import declarative_base, sessionmaker
+import os
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:postgres@postgres:5432/securefiles"
+)
+
+engine = create_engine(DATABASE_URL)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+
+Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()
@@ -9,14 +24,3 @@ def get_db():
         yield db
     finally:
         db.close()
-        
-DATABASE_URL = "sqlite:///./app.db"
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
