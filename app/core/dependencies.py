@@ -1,23 +1,13 @@
-from fastapi import (
-    Depends,
-    HTTPException,
-    status
-)
-
-from fastapi.security import (
-    OAuth2PasswordBearer
-)
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import verify_token
-
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="login"
-)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 def get_current_user(
@@ -26,7 +16,7 @@ def get_current_user(
 ):
     payload = verify_token(token)
 
-    if payload is None:
+    if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
@@ -34,11 +24,13 @@ def get_current_user(
 
     email = payload.get("sub")
 
-    user = (
-        db.query(User)
-        .filter(User.email == email)
-        .first()
-    )
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing subject"
+        )
+
+    user = db.query(User).filter(User.email == email).first()
 
     if not user:
         raise HTTPException(

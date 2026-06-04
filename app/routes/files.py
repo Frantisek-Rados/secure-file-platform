@@ -10,15 +10,15 @@ from fastapi.responses import FileResponse
 
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.models.file import FileRecord
-from app.core.dependencies import get_current_user
-from app.models.user import User
-
+from pathlib import Path
 import uuid
 import shutil
 
-from pathlib import Path
+from app.core.database import get_db
+from app.core.dependencies import get_current_user
+
+from app.models.file import FileRecord
+from app.models.user import User
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -29,11 +29,10 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     unique_name = f"{uuid.uuid4()}_{file.filename}"
-
     file_path = UPLOAD_DIR / unique_name
 
     with open(file_path, "wb") as buffer:
@@ -51,16 +50,20 @@ async def upload_file(
 
     return {
         "id": new_file.id,
-        "filename": new_file.filename,
-        "filepath": new_file.filepath
+        "filename": new_file.filename
     }
 
 
 @router.get("/files")
 def get_files(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    files = db.query(FileRecord).all()
+    files = (
+        db.query(FileRecord)
+        .filter(FileRecord.owner_id == current_user.id)
+        .all()
+    )
 
     return files
 
@@ -68,11 +71,15 @@ def get_files(
 @router.get("/files/{file_id}")
 def get_file(
     file_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     file = (
         db.query(FileRecord)
-        .filter(FileRecord.id == file_id)
+        .filter(
+            FileRecord.id == file_id,
+            FileRecord.owner_id == current_user.id
+        )
         .first()
     )
 
@@ -88,11 +95,15 @@ def get_file(
 @router.get("/download/{file_id}")
 def download_file(
     file_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     file = (
         db.query(FileRecord)
-        .filter(FileRecord.id == file_id)
+        .filter(
+            FileRecord.id == file_id,
+            FileRecord.owner_id == current_user.id
+        )
         .first()
     )
 
