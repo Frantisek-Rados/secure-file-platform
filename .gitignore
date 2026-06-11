@@ -1,5 +1,14 @@
-venv/
-__pycache__/
-*.pyc
-app.db
+# test files
+test*.txt
+out.txt
+
+# local scripts
+init_db.py
+
+# uploads 
 uploads/
+
+# python
+__pycache__/
+*.pyc.env
+.env

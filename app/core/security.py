@@ -1,42 +1,53 @@
-from datetime import datetime, timedelta
-from jose import jwt, JWTError
 from passlib.context import CryptContext
+from datetime import datetime, timedelta
+import jwt
+from fastapi import HTTPException
+import os
 
-SECRET_KEY = "SUPERSECRETKEY"
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
 ALGORITHM = "HS256"
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
 
 
-def hash_password(password: str):
-    return pwd_context.hash(password)
+class PasswordHasher:
 
+    @staticmethod
+    def hash(password: str) -> str:
+        return pwd_context.hash(password)
 
-def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
+    @staticmethod
+    def verify(plain: str, hashed: str) -> bool:
+        return pwd_context.verify(plain, hashed)
 
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-
-    expire = datetime.utcnow() + timedelta(hours=24)
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": datetime.utcnow() + timedelta(minutes=30),
+        "type": "access"
+    })
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# 🔥 TOTO CHÝBALO (FIX CRASHU)
-def verify_token(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
-        return None
-    
 def create_refresh_token(data: dict):
     to_encode = data.copy()
-
-    expire = datetime.utcnow() + timedelta(days=7)
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": datetime.utcnow() + timedelta(days=7),
+        "type": "refresh"
+    })
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_token(token: str):
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None

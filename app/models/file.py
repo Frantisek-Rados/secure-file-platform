@@ -4,17 +4,33 @@ from datetime import datetime
 from app.core.database import Base
 
 
-class FileRecord(Base):
+class File(Base):
     __tablename__ = "files"
 
     id = Column(Integer, primary_key=True, index=True)
+
     filename = Column(String)
+
     filepath = Column(String)
 
-    owner_id = Column(Integer, ForeignKey("users.id"))
+    owner_id = Column(
+        Integer,
+        ForeignKey("users.id")
+    )
 
-    # NEW: sharing support
-    public_id = Column(String, unique=True, index=True, nullable=True)
-    is_public = Column(Integer, default=0)
+    public_id = Column(
+        String,
+        unique=True,
+        index=True,
+        nullable=True
+    )
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    is_public = Column(
+        Integer,
+        default=0
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )

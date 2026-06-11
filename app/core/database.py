@@ -1,21 +1,23 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 import os
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:postgres@postgres:5432/securefiles"
+    "postgresql://postgres:postgres@db:5432/securefiles"
 )
 
-engine = create_engine(DATABASE_URL)
+class Base(DeclarativeBase):
+    pass
+
+
+engine = create_engine(DATABASE_URL, echo=False)
 
 SessionLocal = sessionmaker(
+    bind=engine,
     autocommit=False,
-    autoflush=False,
-    bind=engine
+    autoflush=False
 )
-
-Base = declarative_base()
 
 
 def get_db():

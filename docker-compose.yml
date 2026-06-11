@@ -28,6 +28,11 @@ services:
 
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/securefiles
+      SECRET_KEY: ${SECRET_KEY}
+
+    volumes:
+      - uploads_data:/app/uploads   # <-- TOTO JE KĽÚČ
 
 volumes:
   postgres_data:
+  uploads_data:

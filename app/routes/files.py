@@ -1,37 +1,27 @@
-from fastapi import (
-    APIRouter,
-    UploadFile,
-    File,
-    Depends,
-    HTTPException
-)
-
+from fastapi import APIRouter, UploadFile, File as FastAPIFile, Depends, HTTPException
 from fastapi.responses import FileResponse
-
 from sqlalchemy.orm import Session
 
 from pathlib import Path
 import uuid
 import shutil
-import os
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
-from app.models.file import FileRecord
+from app.models.file import File as FileModel
 from app.models.user import User
-
 from app.schemas.file import FileOut
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
 
 
 @router.post("/upload", response_model=FileOut)
 async def upload_file(
-    file: UploadFile = File(...),
+    file: UploadFile = FastAPIFile(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -41,7 +31,7 @@ async def upload_file(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    new_file = FileRecord(
+    new_file = FileModel(
         filename=file.filename,
         filepath=str(file_path),
         owner_id=current_user.id
@@ -59,32 +49,7 @@ def get_files(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return (
-        db.query(FileRecord)
-        .filter(FileRecord.owner_id == current_user.id)
-        .all()
-    )
-
-
-@router.get("/files/{file_id}", response_model=FileOut)
-def get_file(
-    file_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    file = (
-        db.query(FileRecord)
-        .filter(
-            FileRecord.id == file_id,
-            FileRecord.owner_id == current_user.id
-        )
-        .first()
-    )
-
-    if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return file
+    return db.query(FileModel).filter(FileModel.owner_id == current_user.id).all()
 
 
 @router.get("/download/{file_id}")
@@ -93,50 +58,31 @@ def download_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    file = (
-        db.query(FileRecord)
-        .filter(
-            FileRecord.id == file_id,
-            FileRecord.owner_id == current_user.id
-        )
-        .first()
-    )
+    file = db.query(FileModel).filter(FileModel.id == file_id).first()
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    if not Path(file.filepath).exists():
+    if file.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    # 🔥 TU JE HLAVNÝ FIX — používaš DB PATH, NIE nové skladanie
+    file_path = Path(file.filepath)
+
+    if not file_path.is_absolute():
+        file_path = Path("/app") / file_path
+
+    file_path = file_path.resolve()
+
+    if not file_path.exists():
         raise HTTPException(status_code=404, detail="Physical file not found")
 
     return FileResponse(
-        path=file.filepath,
+        path=str(file_path),
         filename=file.filename,
         media_type="application/octet-stream"
     )
 
-
-@router.delete("/files/{file_id}")
-def delete_file(
-    file_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    file = (
-        db.query(FileRecord)
-        .filter(
-            FileRecord.id == file_id,
-            FileRecord.owner_id == current_user.id
-        )
-        .first()
-    )
-
-    if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    if file.filepath and os.path.exists(file.filepath):
-        os.remove(file.filepath)
-
-    db.delete(file)
-    db.commit()
-
-    return {"message": "File deleted successfully"}
+@router.get("/me")
+def me(user=Depends(get_current_user)):
+    return {"email": user.email}
