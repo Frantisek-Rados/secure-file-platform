@@ -5,7 +5,9 @@ from app.core.database import get_db
 from app.core.security import PasswordHasher, create_access_token, create_refresh_token
 from app.models.user import User
 from app.schemas.user import UserCreate
+from app.core.config import settings
 
+settings.SECRET_KEY
 router = APIRouter()
 
 

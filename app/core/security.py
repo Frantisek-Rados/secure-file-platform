@@ -2,10 +2,11 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import jwt
 from fastapi import HTTPException
-import os
+from app.core.config import settings
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
-ALGORITHM = "HS256"
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+DATABASE_URL = settings.DATABASE_URL
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],

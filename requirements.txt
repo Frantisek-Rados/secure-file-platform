@@ -8,3 +8,5 @@ python-multipart
 PyJWT
 email-validator
 alembic
+pydantic-settings==2.2.1
+pydantic-settings

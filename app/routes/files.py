@@ -8,12 +8,13 @@ import shutil
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.config import settings
 
 from app.models.file import File as FileModel
 from app.models.user import User
 from app.schemas.file import FileOut
 
-UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR = Path(settings.UPLOAD_DIR)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
